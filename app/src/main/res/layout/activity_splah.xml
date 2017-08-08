@@ -12,13 +12,13 @@
     android:layout_margin="20dp"
     android:textColor="#c5bfb7"
     android:text="beta"
-
-    android:id="@+id/textView"/>
+    android:textSize="18sp"
+    android:id="@+id/tv_version_name"/>
 
 <ProgressBar
 
     android:layout_width="wrap_content"
     android:layout_height="wrap_content"
     android:layout_centerHorizontal="true"
-    android:layout_above="@+id/textView"/>
+    android:layout_centerVertical="true"/>
 </RelativeLayout>
