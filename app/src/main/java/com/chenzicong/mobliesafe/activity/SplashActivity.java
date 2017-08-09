@@ -1,35 +1,45 @@
 package com.chenzicong.mobliesafe.activity;
 
+import android.app.Activity;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
+import android.support.v4.content.FileProvider;
 import android.support.v7.app.AlertDialog;
-import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.Window;
 import android.view.WindowManager;
+import android.view.animation.AlphaAnimation;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import com.chenzicong.mobliesafe.R;
+import com.chenzicong.mobliesafe.Utils.SpUtil;
 import com.chenzicong.mobliesafe.Utils.StringUtil;
 import com.chenzicong.mobliesafe.Utils.ToastUtil;
+import com.lidroid.xutils.HttpUtils;
+import com.lidroid.xutils.exception.HttpException;
+import com.lidroid.xutils.http.ResponseInfo;
+import com.lidroid.xutils.http.callback.RequestCallBack;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.PrintStream;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
 
-public class SplashActivity extends AppCompatActivity {
+public class SplashActivity extends Activity {
     /**
      * URL地址出错的状态码
      * IO异常状态码
@@ -48,6 +58,10 @@ public class SplashActivity extends AppCompatActivity {
      * 进入主页面的状态码
      */
     protected static final int ENTER_HOME = 101;
+
+    private String mVersionDes;
+    private String mDownloadUrl;
+
     private Handler mHandler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
@@ -77,32 +91,47 @@ public class SplashActivity extends AppCompatActivity {
             }
         }
     };
-    private String mVersionDes;
+    private RelativeLayout mRl_root;
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_splah);
+        //去标题栏
+        requestWindowFeature(Window.FEATURE_NO_TITLE);
         //去除状态栏
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
+
+        setContentView(R.layout.activity_splah);
         //初始化UI
         iniUI();
         //初始化数据
         initData();
+        //初始化开场动画
+        initAnimation();
+
 
     }
-
+    /**
+     * 初始化动画
+     */
+ protected  void initAnimation(){
+     AlphaAnimation alphaAnimation = new AlphaAnimation(0.3f,1);
+     alphaAnimation.setDuration(3000);
+     mRl_root.startAnimation(alphaAnimation);
+ }
     /**
      * 获取UI的方法
      */
     private void iniUI() {
         mTv_version_name = (TextView) findViewById(R.id.tv_version_name);
+        mRl_root = (RelativeLayout) findViewById(R.id.rl_root);
     }
+
     /**
      * 弹出对话框，提示用户更新
      */
-    protected  void showUpdateDialog(){
+    protected void showUpdateDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setIcon(R.drawable.update_icon);
         builder.setTitle("  版本更新");
@@ -110,6 +139,8 @@ public class SplashActivity extends AppCompatActivity {
         builder.setPositiveButton("赶紧更新吧", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialogInterface, int i) {
+                Log.i("czc", "onClick: nihao");
+                downloadApk();
 
             }
         });
@@ -119,23 +150,58 @@ public class SplashActivity extends AppCompatActivity {
                 enterHome();
             }
         });
+        builder.setOnCancelListener(new DialogInterface.OnCancelListener() {
+            @Override
+            public void onCancel(DialogInterface dialogInterface) {
+                enterHome();
+                dialogInterface.dismiss();
+            }
+        });
         builder.show();
     }
 
     /**
      * 下载apk
      */
-    protected  void downloadApk(){
-        try {
-            FileOutputStream f = openFileOutput("mobilesafe.apk",MODE_APPEND);
-            PrintStream temp = new PrintStream(f);
-            temp.println();
+    protected void downloadApk() {
+        String path = Environment.getExternalStorageDirectory().getAbsolutePath()
+                + File.separator + "mobilefase.apk";
+        Log.i("czc", "downloadApk: "+mDownloadUrl);
+        Log.i("czc", "downloadApk: "+path);
+        HttpUtils httpUtils = new HttpUtils();
+        httpUtils.download(mDownloadUrl, path, new RequestCallBack<File>() {
+            @Override
+            public void onSuccess(ResponseInfo<File> responseInfo) {
+                //下载成功
+                Log.i("czc", "onSuccess: 下载成功");
+                File file = responseInfo.result;
+               installApk(file);
+            }
 
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        }
+            @Override
+            public void onFailure(HttpException error, String msg) {
+                Log.i("czc", "onFailure: 下载失败");
+                //下载失败
+            }
 
+            @Override
+            public void onStart() {
+                super.onStart();
+                Log.i("czc", "onStart: 开始下载");
+                //开始下载
+            }
+
+            //下载过程中的方法(下载apk的总大小当前下载位置，是否在下载
+            @Override
+            public void onLoading(long total, long current, boolean isUploading) {
+                super.onLoading(total, current, isUploading);
+                Log.i("czc", "onLoading: 正在下载");
+                //下载过程
+            }
+        });
     }
+
+
     /**
      * 进入应用程序主界面
      */
@@ -145,6 +211,29 @@ public class SplashActivity extends AppCompatActivity {
         //在开启一个新的界面后，将导航界面关闭
         finish();
 
+    }
+    /**
+     *  file  打开安装界面，让用户安装已下载的应用
+     */
+    protected void installApk(File file) {
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) { // 7.0+以上版本
+            Uri apkUri = FileProvider.getUriForFile(this, "com.chenzicong.mobliesafe", file);
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            intent.setDataAndType(apkUri, "application/vnd.android.package-archive");
+        } else {
+            intent.setDataAndType(Uri.fromFile(file), "application/vnd.android.package-archive");
+        }
+        startActivityForResult(intent,0);
+    }
+//这里回调方法还有问题，先挖个坑
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if(requestCode==0) {
+            enterHome();
+        }
     }
 
     /**
@@ -157,7 +246,12 @@ public class SplashActivity extends AppCompatActivity {
         //2.获取本地版本号
         mLocaversionCode = getVersionCode();
         //3.获取服务器的版本号
-        checkVersion();
+        if(SpUtil.getBoolean(this,ConstentValue.OPEN_UPDATE,false)) {
+            checkVersion();
+        }else {
+            //延时进入home
+            mHandler.sendEmptyMessageDelayed(ENTER_HOME,3000);
+        }
     }
 
     /**
@@ -198,11 +292,11 @@ public class SplashActivity extends AppCompatActivity {
                         String versionName = jsonObject.getString("versionName");
                         mVersionDes = jsonObject.getString("versionDes");
                         String versionCode = jsonObject.getString("versionCode");
-                        String downloadUrl = jsonObject.getString("downloadUrl");
+                        mDownloadUrl = jsonObject.getString("downloadUrl");
                         Log.i("czc", "run: " + versionName);
                         Log.i("czc", "run: " + mVersionDes);
                         Log.i("czc", "run: " + versionCode);
-                        Log.i("czc", "run: " + downloadUrl);
+                        Log.i("czc", "run: " + mDownloadUrl);
                         // 比对版本号（服务器版本号》本地版本号，提示用户更新
                         if (mLocaversionCode < Integer.parseInt(versionCode)) {
                             mMsg.what = UPDATE_VERSION;
