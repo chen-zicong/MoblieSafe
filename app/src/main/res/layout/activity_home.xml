@@ -4,11 +4,9 @@
               android:layout_height="match_parent"
               android:orientation="vertical">
 
-    <com.chenzicong.mobliesafe.view.TitleView
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content">
-
-    </com.chenzicong.mobliesafe.view.TitleView>
+   <TextView
+       style="@style/titlesStyle"
+       android:text="功能列表"/>
 
     <com.chenzicong.mobliesafe.view.FocusTextView
         android:layout_width="match_parent"

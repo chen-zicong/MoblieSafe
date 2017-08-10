@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <declare-styleable name="SettingItemView">
+        <attr name="destitle" format="string"/>
+        <attr name="desoff" format="string"/>
+        <attr name="desno" format="string"/>
+    </declare-styleable>
+
+
+    <declare-styleable name="TitleView">
+        <attr name="main_title" format="string"/>
+    </declare-styleable>
+
+</resources>

@@ -27,7 +27,7 @@ class SettingActivity extends AppCompatActivity {
 
     private void initUpdate() {
         final SettingItemView siv_update = (SettingItemView) findViewById(R.id.siv_unpdate);
-        //获取已有的开关状态
+        //获取已有的开关状态,若是第一次使用,默认为false
         boolean open_update = SpUtil.getBoolean(this, ConstentValue.OPEN_UPDATE, false);
         //是否选中,根据上一次存储的结果做决定
         siv_update.setCheck(open_update);
